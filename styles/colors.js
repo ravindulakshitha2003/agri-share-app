@@ -15,6 +15,7 @@ export const color = {
     uiBackground: '#26392B',
     inputbox: '#486B51',
     inputText: '#E1EDE4',
+    
   },
 
   light: {

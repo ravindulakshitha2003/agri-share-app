@@ -7,6 +7,7 @@ const Home = () => {
     <View style ={{ flex: 1, justifyContent: 'center',alignItems: 'center' , backgroundColor:"white"}}>
       <Text style={{color : "black"}}>Home</Text>
       <Link href="/login">login page </Link>
+      <Link href="/profile">profile </Link>
 
       <Pressable onPress={()=>{
         
