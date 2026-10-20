@@ -1,6 +1,6 @@
 
-import { StyleSheet, View, Pressable, useColorScheme , Image } from 'react-native';
-import React from 'react';
+import { StyleSheet, View, Pressable, useColorScheme , Image, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import React, { useState } from 'react';
 import TheamView from '../../components/TheamView';
 import ThemedInput from '../../components/ThemedInput';
 import ThemaText from '../../components/ThemaText';
@@ -8,11 +8,27 @@ import { color } from '../../styles/colors';
 import LOGO from '../../assets/logo.png'
 import { Link } from 'expo-router';
 import TheamedButton from '../../components/TheamedButton';
+
+import { useUser } from '../../hooks/useUser';
+
+
+
 const Login = () => {
+
+  const {login} = useUser();
+
   const colorTheme = useColorScheme() ?? 'light';
   const theme = color[colorTheme];
+  const [username , setUsername] = useState(null);
+  const [password , setPassword] = useState(null);
+
+  const handleLogin = () => {
+    login(username, password); 
+
+  };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <TheamView
       styles={[
         styles.container,
@@ -22,9 +38,7 @@ const Login = () => {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          {/* <View style={styles.logo}>
-            <ThemaText style={styles.logoText}>SF</ThemaText>
-          </View> */}
+         
           <Image source={LOGO}  style={styles.logo} />
 
           <ThemaText style={[styles.appName, { color: theme.primary }]}>
@@ -56,17 +70,20 @@ const Login = () => {
               label="Username"
               placeholder="Enter your username"
               autoCapitalize="none"
+               onChangeText={setUsername}
             />
 
             <ThemedInput
               label="Password"
               placeholder="Enter your password"
               secureTextEntry
+               onChangeText={setPassword}
             />
           </View>
           
           <TheamView>
-              <TheamedButton label='sign in' />
+              <TheamedButton label='sign in' onPress={handleLogin} />
+     
           </TheamView>
 
           
@@ -83,6 +100,7 @@ const Login = () => {
         </View>
       </View>
     </TheamView>
+</TouchableWithoutFeedback>
   );
 };
 

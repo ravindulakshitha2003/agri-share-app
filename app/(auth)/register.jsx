@@ -15,12 +15,14 @@ import TheamedButton from '../../components/TheamedButton';
 
 import { color } from '../../styles/colors';
 import LOGO from '../../assets/logo.png';
+import { TouchableWithoutFeedback, Keyboard } from 'react-native';
 
 const Register = () => {
   const colorTheme = useColorScheme() ?? 'light';
   const theme = color[colorTheme];
 
   return (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.scrollContent}
@@ -155,6 +157,7 @@ const Register = () => {
         </View>
       </TheamView>
     </ScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 

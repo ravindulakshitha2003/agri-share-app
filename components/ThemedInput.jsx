@@ -9,7 +9,7 @@ const ThemedInput = ({ style, label, ...props }) => {
   const theme = color[colorTheme];
 
   return (
-    <TheamView style={[{ margin :2 ,marginVertical : 10 },styles.inputStyle]}>
+    <TheamView style={[{ margin :2 ,marginVertical : 10 },styles.inputStyle]}  {...props}>
       {label && (
         <Text style={{ color: theme.text ,  }}>
           {label}
