@@ -1,50 +1,99 @@
 
-import { StyleSheet, Text, TextInput, useColorScheme } from 'react-native';
 import React from 'react';
-import TheamView from './TheamView';
-import { color } from '../styles/colors.js';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useColorScheme,
+} from 'react-native';
 
-const ThemedInput = ({ style, label, ...props }) => {
-  const colorTheme = useColorScheme() ?? 'light';
-  const theme = color[colorTheme];
+import { color } from '../styles/colors';
+
+const ThemedInput = ({
+  style,
+  label,
+  error,
+  helperText,
+  ...props
+}) => {
+  const scheme = useColorScheme() ?? 'light';
+  const theme = color[scheme] ?? color.light;
 
   return (
-    <TheamView style={[{ margin :2 ,marginVertical : 10 },styles.inputStyle]}  {...props}>
-      {label && (
-        <Text style={{ color: theme.text ,  }}>
+    <View style={styles.container}>
+      {label ? (
+        <Text style={[styles.label, { color: theme.title }]}>
           {label}
+          {props.required ? (
+            <Text style={{ color: color.warning }}> *</Text>
+          ) : null}
         </Text>
-      )}
+      ) : null}
 
       <TextInput
         style={[
-          styles.textInput,
+          styles.input,
           {
-            color: theme.text,
-            backgroundColor: theme.background,
-            width : '98%',
-            margin: 'auto'
+            color: theme.inputText,
+            backgroundColor: theme.card,
+            borderColor: error ? color.warning : theme.inputbox,
           },
+          props.multiline && styles.multiline,
           style,
         ]}
-        placeholderTextColor={theme.iconColor}
+        placeholderTextColor={theme.placeholder ?? theme.iconColor}
+        selectionColor={theme.primary}
+        accessibilityLabel={label}
+        underlineColorAndroid="transparent"
         {...props}
       />
-    </TheamView>
+
+      {error ? (
+        <Text style={styles.errorText}>
+          {error}
+        </Text>
+      ) : helperText ? (
+        <Text style={[styles.helperText, { color: theme.text }]}>
+          {helperText}
+        </Text>
+      ) : null}
+    </View>
   );
 };
 
 export default ThemedInput;
 
 const styles = StyleSheet.create({
-  inputStyle: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    width : "100%"
+  container: {
+    width: '100%',
+    marginBottom: 16,
   },
-  textInput: {
-    padding: 8,
-    borderRadius: 5,
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 7,
+  },
+  input: {
+    width: '100%',
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+  },
+  multiline: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 6,
+  },
+  errorText: {
+    color: color.warning,
+    fontSize: 12,
+    marginTop: 6,
   },
 });

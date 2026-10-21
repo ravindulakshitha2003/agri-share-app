@@ -9,7 +9,7 @@ const _Layout = () => {
         headerShown: false,
 
         tabBarStyle: {
-          backgroundColor: '#21834A',
+          backgroundColor: '#48D1B0',
           height: 65,
           paddingTop: 8,
           paddingBottom: 8,
@@ -20,8 +20,8 @@ const _Layout = () => {
           elevation: 5,
         },
 
-        tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#C9E6D2',
+        tabBarActiveTintColor: '#02380d',
+        tabBarInactiveTintColor: '#121312',
 
         tabBarLabelStyle: {
           fontSize: 12,
@@ -72,7 +72,24 @@ const _Layout = () => {
           ),
         }}
       />
+      <Tabs.Screen
+          name="selle"
+          options={{
+            href: null,
+          }}
+          />
+
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Explore Map',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="map-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
+    
   );
 };
 

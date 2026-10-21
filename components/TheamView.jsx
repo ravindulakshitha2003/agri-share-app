@@ -1,24 +1,46 @@
-import { StyleSheet, Text, useColorScheme, View } from 'react-native'
-import React from 'react'
+
+import React from 'react';
+import {
+  StyleSheet,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { color } from '../styles/colors';
 
-const TheamView = ({styles ,safe =false ,...props}) => {
-    const Theam = useColorScheme();
+const TheamView = ({
+  styles,
+  safe = false,
+  background,
+  children,
+  ...props
+}) => {
+  const scheme = useColorScheme() ?? 'light';
+  const theme = color[scheme] ?? color.light;
 
-  if(safe){
-    return(
-       <SafeAreaView style={[{margin : "2",padding: 5 ,width : '100%'},styles]}  {...props} />
-    )
-  }else{
-     return (
-    <View style={[{margin : "2",padding: 5 ,width : '100%'},styles]}  {...props} />
-      
-  )
-  }
+  const Container = safe ? SafeAreaView : View;
 
- 
-}
+  return (
+    <Container
+      style={[
+        componentStyles.container,
+        {
+          backgroundColor: background ?? theme.background,
+        },
+        styles,
+      ]}
+      {...props}
+    >
+      {children}
+    </Container>
+  );
+};
 
-export default TheamView
+export default TheamView;
 
-const styles = StyleSheet.create({})
+const componentStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+  },
+});
