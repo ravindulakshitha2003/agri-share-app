@@ -1,106 +1,170 @@
 
-import { StyleSheet, View, Pressable, useColorScheme , Image, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  useColorScheme,
+  Image,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Pressable,
+} from 'react-native';
+import { Link,  useRouter } from 'expo-router';
+
 import TheamView from '../../components/TheamView';
 import ThemedInput from '../../components/ThemedInput';
 import ThemaText from '../../components/ThemaText';
-import { color } from '../../styles/colors';
-import LOGO from '../../assets/logo.png'
-import { Link } from 'expo-router';
 import TheamedButton from '../../components/TheamedButton';
 
+import { color } from '../../styles/colors';
+import LOGO from '../../assets/logo.png';
 import { useUser } from '../../hooks/useUser';
 
 
+const PRIMARY = '#21834A';
 
 const Login = () => {
-
-  const {login} = useUser();
+  const { login } = useUser();
 
   const colorTheme = useColorScheme() ?? 'light';
   const theme = color[colorTheme];
-  const [username , setUsername] = useState(null);
-  const [password , setPassword] = useState(null);
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const  router = useRouter()
 
   const handleLogin = () => {
-    login(username, password); 
+    if (!username.trim() || !password) {
+      return;
+    }
 
+   const data = login(username.trim(), password);
+   if(data != null){
+      router.replace('/shop');
+   }
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <TheamView
-      styles={[
-        styles.container,
-        { backgroundColor: theme.background },
-      ]}
-    >
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-         
-          <Image source={LOGO}  style={styles.logo} />
+      <TheamView
+        styles={[
+          styles.container,
+          { backgroundColor: theme.background },
+        ]}
+      >
+        <View style={styles.content}>
+          {/* App Header */}
+          <View style={styles.header}>
+            <Image source={LOGO} style={styles.logo} />
 
-          <ThemaText style={[styles.appName, { color: theme.primary }]}>
-            Seasona Fruit
-          </ThemaText>
-
-          <ThemaText style={styles.subtitle}>
-            Freshness starts here.
-          </ThemaText>
-        </View>
-
-        {/* Login form */}
-        <View
-          style={[
-            styles.form,
-            { backgroundColor: theme.card },
-          ]}
-        >
-          <ThemaText style={[styles.title, { color: theme.text ,textAlign : 'center' }]}>
-            Welcome back!
-          </ThemaText>
-
-          <ThemaText style={[styles.description,{textAlign : 'center'} ]}>
-            Sign in to continue to your account
-          </ThemaText>
-
-          <View style={styles.fields}>
-            <ThemedInput
-              label="Username"
-              placeholder="Enter your username"
-              autoCapitalize="none"
-               onChangeText={setUsername}
-            />
-
-            <ThemedInput
-              label="Password"
-              placeholder="Enter your password"
-              secureTextEntry
-               onChangeText={setPassword}
-            />
-          </View>
-          
-          <TheamView>
-              <TheamedButton label='sign in' onPress={handleLogin} />
-     
-          </TheamView>
-
-          
-
-          <View style={styles.footer}>
-            <ThemaText style={styles.footerText}>
-              Fresh produce, smarter distribution.
+            <ThemaText
+              style={[
+                styles.appName,
+                { color: theme.primary || PRIMARY },
+              ]}
+            >
+              Seasona Fruit
             </ThemaText>
-            <ThemaText style={[styles.footerText,{color : '#076d32', textDecorationLine: 'underline',fontSize : 12 ,fontWeight :50}]}>
-             <Link href='/register' > register </Link>
+
+            <ThemaText
+              style={[
+                styles.subtitle,
+                { color: theme.text },
+              ]}
+            >
+              Freshness starts here.
             </ThemaText>
-            
+          </View>
+
+          {/* Login Form */}
+          <View
+            style={[
+              styles.form,
+              { backgroundColor: theme.card },
+            ]}
+          >
+            <ThemaText
+              style={[
+                styles.title,
+                { color: theme.text },
+              ]}
+            >
+              Welcome back!
+            </ThemaText>
+
+            <ThemaText
+              style={[
+                styles.description,
+                { color: theme.text },
+              ]}
+            >
+              Sign in to continue to your account
+            </ThemaText>
+
+            {/* Input Fields */}
+            <View style={styles.fields}>
+              <ThemedInput
+                label="Username"
+                placeholder="Enter your username"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setUsername}
+              />
+
+              <ThemedInput
+                label="Password"
+                placeholder="Enter your password"
+                secureTextEntry
+                autoCapitalize="none"
+                onChangeText={setPassword}
+              />
+            </View>
+
+            {/* Sign In Button */}
+            <View style={styles.buttonContainer}>
+              <TheamedButton
+                label="Sign In"
+                onPress={handleLogin}
+              />
+            </View>
+
+            {/* Footer */}
+            <TheamView style={styles.footer}>
+                <ThemaText
+                  style={[
+                    styles.footerText,
+                    { color: theme.text },
+                  ]}
+                >
+                  Fresh produce, smarter distribution.
+                </ThemaText>
+
+                <View style={styles.registerContainer}>
+                  <ThemaText
+                    style={[
+                      styles.registerPrompt,
+                      { color: theme.text },
+                    ]}
+                  >
+                    Don't have an account?
+                  </ThemaText>
+
+                  <Link href="/register" asChild>
+                    <Pressable
+                      accessibilityRole="link"
+                      hitSlop={8}
+                    >
+                      <ThemaText style={styles.registerLink}>
+                        Register
+                      </ThemaText>
+                    </Pressable>
+                  </Link>
+                </View>
+            </TheamView>
           </View>
         </View>
-      </View>
-    </TheamView>
-</TouchableWithoutFeedback>
+      </TheamView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -113,7 +177,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 22,
     paddingVertical: 30,
-   
   },
 
   content: {
@@ -130,30 +193,24 @@ const styles = StyleSheet.create({
     width: 98,
     height: 98,
     borderRadius: 23,
-    backgroundColor: '#21834A',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: PRIMARY,
     marginBottom: 14,
-     borderWidth : 2,
-    borderColor : '#21834A'
-  },
-
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '800',
+    borderWidth: 2,
+    borderColor: PRIMARY,
   },
 
   appName: {
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: 0.4,
+    textAlign: 'center',
   },
 
   subtitle: {
     fontSize: 14,
     marginTop: 7,
     opacity: 0.8,
+    textAlign: 'center',
   },
 
   form: {
@@ -171,47 +228,53 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 25,
     fontWeight: '800',
-    textAlign: 'left',
+    textAlign: 'center',
   },
 
   description: {
     fontSize: 13,
-    textAlign: 'left',
+    textAlign: 'center',
     marginTop: 8,
     opacity: 0.75,
   },
 
   fields: {
     marginTop: 16,
+    gap: 14,
   },
 
-  loginButton: {
-    minHeight: 52,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  buttonContainer: {
     marginTop: 24,
-  },
-
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.99 }],
-  },
-
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
 
   footer: {
     marginTop: 22,
     alignItems: 'center',
+    gap: 12,
   },
 
   footerText: {
     fontSize: 12,
     opacity: 0.65,
     textAlign: 'center',
+  },
+
+  registerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+
+  registerPrompt: {
+    fontSize: 12,
+    opacity: 0.8,
+  },
+
+  registerLink: {
+    color: PRIMARY,
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

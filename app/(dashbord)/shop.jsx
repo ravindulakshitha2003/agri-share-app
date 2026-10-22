@@ -1,770 +1,545 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View,
-  StatusBar,
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useProducts } from '../../hooks/useProduct';
 
-import { listings } from '../../context/listings.js';
-import { color } from '../../styles/colors';
-import TheamView from '../../components/TheamView.jsx';
+const PRIMARY = '#21834A';
 
-const filters = ['All', 'Fruit', 'Vegetable'];
+const CATEGORIES = [
+  'All',
+  'Fruit',
+  'Vegetable',
+  'Other',
+];
+
+const formatPrice = (price, negotiable) => {
+  if (price === null || price === undefined || price === '') {
+    return negotiable ? 'Price negotiable' : 'Price unavailable';
+  }
+
+  const value = Number(price);
+
+  if (!Number.isFinite(value)) {
+    return negotiable ? 'Price negotiable' : 'Price unavailable';
+  }
+
+  return `Rs. ${value.toLocaleString('en-LK')}`;
+};
+
+const ProductCard = ({ item, onPress, dark }) => {
+  const name = item.productName?.trim() || 'Unnamed product';
+  const location = item.location?.trim() || 'Location not provided';
+  const quantity = Number(item.quantity);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.card,
+        { backgroundColor: dark ? '#1C2921' : '#FFFFFF' },
+      ]}
+    >
+      <View style={styles.cardTop}>
+        <View style={styles.productIcon}>
+          <Ionicons
+            name={
+              (item.category || '').toLowerCase() === 'vegetable'
+                ? 'leaf-outline'
+                : 'nutrition-outline'
+            }
+            size={28}
+            color={PRIMARY}
+          />
+        </View>
+
+        <View style={styles.cardHeading}>
+          <Text
+            numberOfLines={1}
+            style={[styles.productName, { color: dark ? '#FFFFFF' : '#17231B' }]}
+          >
+            {name}
+          </Text>
+
+          <Text style={styles.categoryText}>
+            {item.category || 'Uncategorized'}
+          </Text>
+
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={14} color="#77847B" />
+            <Text
+              numberOfLines={1}
+              style={[styles.locationText, { color: dark ? '#B7C4BA' : '#69766D' }]}
+            >
+              {location}
+            </Text>
+          </View>
+        </View>
+
+        <Ionicons name="chevron-forward" size={20} color="#87938A" />
+      </View>
+
+      <View style={styles.cardDivider} />
+
+      <View style={styles.cardBottom}>
+        <View>
+          <Text style={styles.smallLabel}>Available quantity</Text>
+          <Text style={[styles.quantityText, { color: dark ? '#FFFFFF' : '#26352A' }]}>
+            {Number.isFinite(quantity) && quantity > 0
+              ? `${quantity.toLocaleString('en-LK')} ${item.unit || ''}`.trim()
+              : 'Not specified'}
+          </Text>
+        </View>
+
+        <View style={styles.priceContainer}>
+          <Text style={styles.smallLabel}>Price</Text>
+          <Text style={styles.priceText}>
+            {formatPrice(item.price, item.priceNegotiable)}
+          </Text>
+        </View>
+      </View>
+
+      {item.priceNegotiable ? (
+        <View style={styles.negotiableTag}>
+          <Ionicons name="chatbubble-ellipses-outline" size={13} color={PRIMARY} />
+          <Text style={styles.negotiableText}>Negotiable</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+};
 
 export default function Shop() {
   const router = useRouter();
-  const scheme = useColorScheme() ?? 'light';
-  const theme = color[scheme] ?? color.light;
+  const { products = [], getallProduct, loading, error } = useProducts();
+
+  const scheme = useColorScheme();
+  const dark = scheme === 'dark';
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredListings = useMemo(() => {
+  const loadProducts = useCallback(async () => {
+    try {
+      await getallProduct();
+    } catch (err) {
+      console.error('Unable to load products:', err);
+    }
+  }, [getallProduct]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await getallProduct();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [getallProduct]);
+
+  const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return listings.filter((item) => {
-      const matchesName =
-        item.name.toLowerCase().includes(query) ||
-        (item.location || '').toLowerCase().includes(query) ||
-        (item.seller?.username || '').toLowerCase().includes(query) ||
-        (item.variety || '').toLowerCase().includes(query);
-
+    return products.filter((item) => {
       const matchesCategory =
         selectedCategory === 'All' ||
-        item.category?.toLowerCase() === selectedCategory.toLowerCase();
+        (item.category || '').toLowerCase() === selectedCategory.toLowerCase();
 
-      return matchesName && matchesCategory;
+      const searchableText = [
+        item.productName,
+        item.category,
+        item.location,
+        item.username,
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return matchesCategory && (!query || searchableText.includes(query));
     });
-  }, [search, selectedCategory]);
+  }, [products, search, selectedCategory]);
 
-  const getUrgencyStyle = (urgency) => {
-    switch (urgency) {
-      case 'Critical':
-        return {
-          backgroundColor: scheme === 'dark' ? '#4A2426' : '#FDECEC',
-          textColor: scheme === 'dark' ? '#FF9A9A' : '#B42318',
-        };
-      case 'Urgent':
-        return {
-          backgroundColor: scheme === 'dark' ? '#49351D' : '#FFF2D9',
-          textColor: scheme === 'dark' ? '#FFD08A' : '#995C00',
-        };
-      default:
-        return {
-          backgroundColor: scheme === 'dark' ? '#203D2D' : '#E8F5EC',
-          textColor: scheme === 'dark' ? '#83D9A0' : '#267744',
-        };
+  const openProduct = (item) => {
+    if (!item?.id) {
+      console.warn('This product has no backend ID:', item);
+      return;
     }
-  };
 
-  const renderListing = ({ item }) => {
-    const urgency = getUrgencyStyle(item.urgency);
-
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`View ${item.name} details`}
-        onPress={() =>
-          router.push({
-            pathname: '/selle',
-            params: { id: String(item.id) },
-          })
-        }
-        style={({ pressed }) => [
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-            opacity: pressed ? 0.92 : 1,
-            transform: [{ scale: pressed ? 0.99 : 1 }],
-          },
-        ]}
-      >
-        <View style={styles.cardTop}>
-          <View style={styles.productIcon}>
-            <Ionicons
-              name={
-                item.category?.toLowerCase() === 'vegetable'
-                  ? 'leaf-outline'
-                  : 'nutrition-outline'
-              }
-              size={25}
-              color={theme.primary}
-            />
-          </View>
-
-          <View style={styles.productInfo}>
-            <Text
-              style={[styles.productName, { color: theme.title }]}
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
-
-            <Text
-              style={[styles.variety, { color: theme.text }]}
-              numberOfLines={1}
-            >
-              {item.variety || item.category}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.urgencyBadge,
-              { backgroundColor: urgency.backgroundColor },
-            ]}
-          >
-            <View
-              style={[
-                styles.urgencyDot,
-                { backgroundColor: urgency.textColor },
-              ]}
-            />
-            <Text
-              style={[styles.urgencyText, { color: urgency.textColor }]}
-            >
-              {item.urgency || 'Available'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.priceSection}>
-          <View>
-            <Text style={[styles.priceLabel, { color: theme.text }]}>
-              Price per {item.unit}
-            </Text>
-            <Text style={[styles.price, { color: theme.primary }]}>
-              Rs. {Number(item.pricePerUnit || 0).toFixed(2)}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.quantityBadge,
-              { backgroundColor: theme.uiBackground },
-            ]}
-          >
-            <Ionicons
-              name="cube-outline"
-              size={14}
-              color={theme.primary}
-            />
-            <Text style={[styles.quantity, { color: theme.title }]}>
-              {item.quantity} {item.unit}
-            </Text>
-          </View>
-        </View>
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <View style={styles.cardFooter}>
-          <View style={styles.sellerAvatar}>
-            <Ionicons
-              name="person-outline"
-              size={18}
-              color={theme.primary}
-            />
-          </View>
-
-          <View style={styles.sellerInfo}>
-            <Text
-              style={[styles.sellerName, { color: theme.title }]}
-              numberOfLines={1}
-            >
-              @{item.seller?.username || 'Local seller'}
-            </Text>
-
-            <View style={styles.locationRow}>
-              <Ionicons
-                name="location-outline"
-                size={13}
-                color={theme.iconColor}
-              />
-              <Text
-                style={[styles.location, { color: theme.text }]}
-                numberOfLines={1}
-              >
-                {item.location || 'Sri Lanka'}
-                {item.seller?.province
-                  ? `, ${item.seller.province}`
-                  : ''}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color="#E9A23B" />
-            <Text style={[styles.rating, { color: theme.title }]}>
-              {Number(item.seller?.rating || 0).toFixed(1)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.detailsRow}>
-          <Text style={[styles.reviewCount, { color: theme.text }]}>
-            {item.seller?.reviewCount || 0} reviews
-          </Text>
-
-          <View style={styles.detailsLink}>
-            <Text style={[styles.viewDetails, { color: theme.primary }]}>
-              View details
-            </Text>
-            <Ionicons
-              name="arrow-forward"
-              size={15}
-              color={theme.primary}
-            />
-          </View>
-        </View>
-      </Pressable>
-    );
+    router.push({
+      pathname: '/(dashbord)/selle',
+      params: { id: String(item.id) },
+    });
   };
 
   return (
-    <TheamView safe styles={{ backgroundColor: theme.background }}>
-      <StatusBar
-        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.background}
-      />
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: dark ? '#101812' : '#F5F8F5' },
+      ]}
+    >
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.headerTitle, { color: dark ? '#FFFFFF' : '#17231B' }]}>
+            Fresh Market
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            Discover fresh produce from local sellers
+          </Text>
+        </View>
 
-      <FlatList
-        data={filteredListings}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderListing}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.header}>
-              <View style={styles.headerText}>
-                <Text style={[styles.eyebrow, { color: theme.primary }]}>
-                  FRESHNESS STARTS HERE
-                </Text>
-
-                <Text style={[styles.heading, { color: theme.title }]}>
-                  Discover{'\n'}fresh produce.
-                </Text>
-
-                <Text style={[styles.subtitle, { color: theme.text }]}>
-                  Good food, local farmers, better connections.
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.headerIcon,
-                  { backgroundColor: theme.uiBackground },
-                ]}
-              >
-                <Ionicons
-                  name="leaf"
-                  size={30}
-                  color={theme.primary}
-                />
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.searchContainer,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name="search-outline"
-                size={21}
-                color={theme.iconColor}
-              />
-
-              <TextInput
-                style={[styles.searchInput, { color: theme.inputText }]}
-                placeholder="Search produce, sellers, locations..."
-                placeholderTextColor={theme.placeholder}
-                value={search}
-                onChangeText={setSearch}
-                autoCapitalize="none"
-                returnKeyType="search"
-                accessibilityLabel="Search produce"
-              />
-
-              {search.length > 0 && (
-                <Pressable
-                  onPress={() => setSearch('')}
-                  accessibilityLabel="Clear search"
-                  hitSlop={8}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={theme.iconColor}
-                  />
-                </Pressable>
-              )}
-            </View>
-
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.title }]}>
-                Browse categories
-              </Text>
-            </View>
-
-            <View style={styles.filterRow}>
-              {filters.map((filter) => {
-                const selected = selectedCategory === filter;
-
-                return (
-                  <Pressable
-                    key={filter}
-                    onPress={() => setSelectedCategory(filter)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    style={[
-                      styles.filterButton,
-                      {
-                        backgroundColor: selected
-                          ? theme.primary
-                          : theme.card,
-                        borderColor: selected
-                          ? theme.primary
-                          : theme.border,
-                      },
-                    ]}
-                  >
-                    {filter !== 'All' && (
-                      <Ionicons
-                        name={
-                          filter === 'Fruit'
-                            ? 'nutrition-outline'
-                            : 'leaf-outline'
-                        }
-                        size={16}
-                        color={selected ? '#FFFFFF' : theme.text}
-                      />
-                    )}
-
-                    <Text
-                      style={[
-                        styles.filterText,
-                        { color: selected ? '#FFFFFF' : theme.text },
-                      ]}
-                    >
-                      {filter}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={styles.resultsHeader}>
-              <View>
-                <Text style={[styles.sectionTitle, { color: theme.title }]}>
-                  Available produce
-                </Text>
-                <Text style={[styles.resultsSubtitle, { color: theme.text }]}>
-                  Discover something fresh today
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.countBadge,
-                  { backgroundColor: theme.uiBackground },
-                ]}
-              >
-                <Text style={[styles.countText, { color: theme.primary }]}>
-                  {filteredListings.length}
-                </Text>
-              </View>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          <View
-            style={[
-              styles.emptyState,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <Ionicons
-              name="search-outline"
-              size={36}
-              color={theme.iconColor}
-            />
-            <Text style={[styles.emptyTitle, { color: theme.title }]}>
-              No produce found
-            </Text>
-            <Text style={[styles.emptyText, { color: theme.text }]}>
-              Try another keyword or select a different category.
-            </Text>
-
-            <Pressable
-              onPress={() => {
-                setSearch('');
-                setSelectedCategory('All');
-              }}
-              style={[
-                styles.resetButton,
-                { backgroundColor: theme.primary },
-              ]}
-            >
-              <Text style={styles.resetButtonText}>Clear filters</Text>
-            </Pressable>
-          </View>
-        }
-        ListFooterComponent={<View style={{ height: 100 }} />}
-      />
+        <View style={styles.headerIcon}>
+          <Ionicons name="leaf" size={24} color={PRIMARY} />
+        </View>
+      </View>
 
       <View
-        pointerEvents="box-none"
-        style={styles.mapButtonWrapper}
+        style={[
+          styles.searchBox,
+          { backgroundColor: dark ? '#1C2921' : '#FFFFFF' },
+        ]}
       >
-        <Pressable
-          onPress={() => router.push('/map')}
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.mapButton,
-            {
-              backgroundColor: theme.primary,
-              opacity: pressed ? 0.88 : 1,
-            },
-          ]}
-        >
-          <Ionicons name="map-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.mapButtonText}>Explore map</Text>
-          <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
-        </Pressable>
+        <Ionicons name="search-outline" size={21} color="#7D8A80" />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search fruits, vegetables, sellers..."
+          placeholderTextColor={dark ? '#98A59B' : '#89948C'}
+          style={[styles.searchInput, { color: dark ? '#FFFFFF' : '#17231B' }]}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+        {search.length > 0 ? (
+          <Pressable onPress={() => setSearch('')} hitSlop={8}>
+            <Ionicons name="close-circle" size={20} color="#7D8A80" />
+          </Pressable>
+        ) : null}
       </View>
-    </TheamView>
+
+      <View style={styles.categoryHeadingRow}>
+        <Text style={[styles.sectionTitle, { color: dark ? '#FFFFFF' : '#17231B' }]}>
+          Categories
+        </Text>
+        <Text style={styles.resultCount}>
+          {filteredProducts.length} listings
+        </Text>
+      </View>
+
+      <View style={styles.categoryList}>
+        {CATEGORIES.map((category) => {
+          const selected = selectedCategory === category;
+
+          return (
+            <Pressable
+              key={category}
+              onPress={() => setSelectedCategory(category)}
+              style={[
+                styles.categoryChip,
+                selected
+                  ? styles.categoryChipSelected
+                  : {
+                      backgroundColor: dark ? '#1C2921' : '#FFFFFF',
+                      borderColor: dark ? '#34483A' : '#E0E8E1',
+                    },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: selected ? '#FFFFFF' : dark ? '#D8E2DA' : '#536158' },
+                ]}
+              >
+                {category}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {loading && products.length === 0 ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text style={styles.stateText}>Loading fresh produce...</Text>
+        </View>
+      ) : error && products.length === 0 ? (
+        <View style={styles.centerState}>
+          <Ionicons name="cloud-offline-outline" size={42} color="#9AA69D" />
+          <Text style={[styles.stateTitle, { color: dark ? '#FFFFFF' : '#17231B' }]}>
+            Could not load listings
+          </Text>
+          <Text style={styles.stateText}>{String(error)}</Text>
+          <Pressable onPress={loadProducts} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Try again</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={(item, index) => String(item.id || index)}
+          renderItem={({ item }) => (
+            <ProductCard
+              item={item}
+              dark={dark}
+              onPress={() => openProduct(item)}
+            />
+          )}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredProducts.length === 0 && styles.emptyListContent,
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={PRIMARY}
+              colors={[PRIMARY]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.centerState}>
+              <Ionicons name="basket-outline" size={48} color="#9AA69D" />
+              <Text style={[styles.stateTitle, { color: dark ? '#FFFFFF' : '#17231B' }]}>
+                No products found
+              </Text>
+              <Text style={styles.stateText}>
+                Try another search or choose a different category.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setSearch('');
+                  setSelectedCategory('All');
+                }}
+                style={styles.retryButton}
+              >
+                <Text style={styles.retryButtonText}>Clear filters</Text>
+              </Pressable>
+            </View>
+          }
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  listContent: {
+  screen: {
+    flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: 14,
   },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
-    gap: 12,
+    marginBottom: 20,
   },
-  headerText: {
-    flex: 1,
-  },
-  eyebrow: {
-    fontSize: 11,
+  headerTitle: {
+    fontSize: 27,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 9,
   },
-  heading: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '800',
-    letterSpacing: -0.8,
-  },
-  subtitle: {
+  headerSubtitle: {
+    color: '#849087',
     fontSize: 13,
-    lineHeight: 19,
-    marginTop: 8,
+    marginTop: 5,
   },
   headerIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 23,
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: '#E6F3E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  searchContainer: {
-    minHeight: 54,
-    borderRadius: 17,
-    borderWidth: 1,
+  searchBox: {
+    minHeight: 52,
+    borderRadius: 15,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
     gap: 10,
+    marginBottom: 22,
+    borderWidth: 1,
+    borderColor: '#E6ECE7',
   },
   searchInput: {
     flex: 1,
-    minWidth: 0,
-    paddingVertical: 13,
-    fontSize: 13,
+    fontSize: 14,
+    paddingVertical: 12,
   },
-
-  sectionHeader: {
-    marginTop: 25,
+  categoryHeadingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 9,
-  },
-  filterButton: {
-    minHeight: 40,
-    borderRadius: 13,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  filterText: {
-    fontSize: 13,
     fontWeight: '700',
   },
-
-  resultsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 27,
-    marginBottom: 15,
-  },
-  resultsSubtitle: {
+  resultCount: {
     fontSize: 12,
-    marginTop: 4,
+    color: '#849087',
   },
-  countBadge: {
-    minWidth: 38,
-    height: 38,
-    borderRadius: 13,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  categoryList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
   },
-  countText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  card: {
+  categoryChip: {
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderRadius: 21,
-    padding: 16,
-    overflow: 'hidden',
+  },
+  categoryChipSelected: {
+    backgroundColor: PRIMARY,
+    borderColor: PRIMARY,
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  listContent: {
+    paddingBottom: 30,
+    gap: 13,
+  },
+  card: {
+    borderRadius: 18,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E5EBE6',
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
+    gap: 12,
   },
   productIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#EAF5EC',
+    width: 56,
+    height: 56,
+    borderRadius: 15,
+    backgroundColor: '#E9F5EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productInfo: {
+  cardHeading: {
     flex: 1,
-    minWidth: 0,
   },
   productName: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  variety: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  urgencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 9,
-  },
-  urgencyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  urgencyText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-
-  priceSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 20,
-  },
-  priceLabel: {
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  price: {
-    fontSize: 23,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  quantityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 11,
-  },
-  quantity: {
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: '700',
   },
-
-  separator: {
-    height: 1,
-    marginVertical: 16,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sellerAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    backgroundColor: '#EAF5EC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sellerInfo: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  sellerName: {
+  categoryText: {
     fontSize: 12,
-    fontWeight: '800',
+    color: PRIMARY,
+    marginTop: 4,
+    fontWeight: '600',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    marginTop: 5,
   },
-  location: {
+  locationText: {
     flex: 1,
-    fontSize: 11,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 9,
-    backgroundColor: '#FFF5DF',
-  },
-  rating: {
     fontSize: 12,
-    fontWeight: '800',
   },
-  detailsRow: {
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#E7ECE8',
+    marginVertical: 14,
+  },
+  cardBottom: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginTop: 15,
   },
-  reviewCount: {
+  smallLabel: {
     fontSize: 11,
+    color: '#89948C',
+    marginBottom: 5,
   },
-  detailsLink: {
+  quantityText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+    maxWidth: '55%',
+  },
+  priceText: {
+    color: PRIMARY,
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  negotiableTag: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-  },
-  viewDetails: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-
-  emptyState: {
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 25,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+    backgroundColor: '#EAF5ED',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
     marginTop: 12,
   },
-  emptyText: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 7,
+  negotiableText: {
+    fontSize: 11,
+    color: PRIMARY,
+    fontWeight: '600',
   },
-  resetButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 12,
-    marginTop: 17,
-  },
-  resetButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  mapButtonWrapper: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 12,
-  },
-  mapButton: {
-    minHeight: 54,
-    borderRadius: 17,
-    paddingHorizontal: 19,
-    flexDirection: 'row',
+  centerState: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 25,
+    paddingVertical: 40,
     gap: 10,
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.17,
-    shadowRadius: 7,
   },
-  mapButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    flex: 1,
+  emptyListContent: {
+    flexGrow: 1,
+  },
+  stateTitle: {
+    fontSize: 17,
+    fontWeight: '700',
     textAlign: 'center',
+    marginTop: 5,
+  },
+  stateText: {
+    color: '#89948C',
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  retryButton: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 11,
+    marginTop: 7,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

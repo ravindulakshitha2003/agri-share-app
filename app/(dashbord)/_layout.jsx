@@ -1,9 +1,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ProductProvider } from '../../context/ProductContext';
 
 const _Layout = () => {
   return (
+    <ProductProvider>
+
+   
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -89,6 +93,7 @@ const _Layout = () => {
         }}
       />
     </Tabs>
+     </ProductProvider>
     
   );
 };

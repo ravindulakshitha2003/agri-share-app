@@ -1,12 +1,17 @@
 
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   useColorScheme,
   Image,
   ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ActivityIndicator,
 } from 'react-native';
-import React from 'react';
+
+import { Link, router } from 'expo-router';
 
 import TheamView from '../../components/TheamView';
 import ThemedInput from '../../components/ThemedInput';
@@ -15,281 +20,381 @@ import TheamedButton from '../../components/TheamedButton';
 
 import { color } from '../../styles/colors';
 import LOGO from '../../assets/logo.png';
-import { TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useUser } from '../../hooks/useUser';
 
-const Register = () => {
-  const colorTheme = useColorScheme() ?? 'light';
-  const theme = color[colorTheme];
+ 
+const PRIMARY = '#21834A';
+
+export default function Register() {
+  const colorScheme = useColorScheme() || 'light';
+  const theme = color[colorScheme];
+  const {register} = useUser();
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [age, setAge] = useState('');
+  const [province, setProvince] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [confirmWhatsappNumber, setConfirmWhatsappNumber] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  async function handleRegister() {
+    Keyboard.dismiss();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    // Validate required fields
+    if (
+      !username.trim() ||
+      !password ||
+      !confirmPassword ||
+      !age.trim() ||
+      !province.trim() ||
+      !whatsappNumber.trim() ||
+      !confirmWhatsappNumber.trim()
+    ) {
+      setErrorMessage('Please complete all fields.');
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      setErrorMessage('Username must contain at least 3 characters.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage('Password must contain at least 8 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
+    if (!/^\d+$/.test(age.trim()) || Number(age) < 1) {
+      setErrorMessage('Please enter a valid age.');
+      return;
+    }
+
+    if (whatsappNumber.trim() !== confirmWhatsappNumber.trim()) {
+      setErrorMessage('WhatsApp numbers do not match.');
+      return;
+    }
+
+    if (!/^[0-9+\-\s()]{7,20}$/.test(whatsappNumber.trim())) {
+      setErrorMessage('Please enter a valid WhatsApp number.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await register({
+        username: username.trim(),
+        password,
+        province: province.trim(),
+        whatsapp_number: whatsappNumber.trim(),
+        age: Number(age),
+        role: 'USER',
+      });
+
+      setSuccessMessage(
+        result?.message || 'Your account was created successfully.'
+      );
+
+      // Navigate to login after successful registration.
+      // Change the route if your login screen uses a different path.
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 1000);
+    } catch (error) {
+      setErrorMessage(
+        error.message || 'Registration failed. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <TheamView
-        styles={[
-          styles.container,
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <ScrollView
+        style={[
+          styles.scrollView,
           { backgroundColor: theme.background },
         ]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
-          {/* Header */}
+        <TheamView
+          styles={[
+            styles.container,
+            { backgroundColor: theme.background },
+          ]}
+        >
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={LOGO}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
+            <Image source={LOGO} style={styles.logo} />
 
-            <ThemaText
-              style={[styles.appName, { color: theme.primary }]}
-            >
-              Seasona Fruit
+            <ThemaText style={styles.title}>
+              Create Account
             </ThemaText>
 
             <ThemaText style={styles.subtitle}>
+              Join Seasona Fruit
+            </ThemaText>
+
+            <ThemaText style={styles.description}>
               Connect. Share. Reduce waste.
             </ThemaText>
           </View>
 
-          {/* Registration form */}
-          <View
-            style={[
-              styles.form,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.inputbox,
-              },
-            ]}
-          >
-            <View style={styles.formHeading}>
-              <ThemaText
-                style={[styles.title, { color: theme.text }]}
-              >
-                Create Account
-              </ThemaText>
+          <View style={styles.form}>
+            <ThemaText style={styles.sectionTitle}>
+              Personal Information
+            </ThemaText>
 
-              <ThemaText style={styles.description}>
-                Join our community and make every harvest count.
-              </ThemaText>
-            </View>
+            <ThemaText style={styles.fieldLabel}>
+              Username
+            </ThemaText>
+            <ThemedInput
+              placeholder="Enter your username"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-            {/* Account details */}
-            <View style={styles.section}>
-              <ThemaText
-                style={[styles.sectionTitle, { color: theme.primary }]}
-              >
-                Account Details
-              </ThemaText>
+            <ThemaText style={styles.fieldLabel}>
+              Age
+            </ThemaText>
+            <ThemedInput
+              placeholder="Enter your age"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="number-pad"
+            />
 
-              <ThemedInput
-                label="Username"
-                placeholder="Enter your username"
-                autoCapitalize="none"
-              />
+            <ThemaText style={styles.fieldLabel}>
+              Province
+            </ThemaText>
+            <ThemedInput
+              placeholder="e.g. Southern"
+              value={province}
+              onChangeText={setProvince}
+              autoCapitalize="words"
+            />
 
-              <ThemedInput
-                label="Password"
-                placeholder="Create a password"
-                secureTextEntry
-              />
+            <ThemaText style={styles.sectionTitle}>
+              Account Security
+            </ThemaText>
 
-              <ThemedInput
-                label="Confirm Password"
-                placeholder="Re-enter your password"
-                secureTextEntry
-              />
-            </View>
+            <ThemaText style={styles.fieldLabel}>
+              Password
+            </ThemaText>
+            <ThemedInput
+              placeholder="Create a password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-            {/* Personal details */}
-            <View style={styles.section}>
-              <ThemaText
-                style={[styles.sectionTitle, { color: theme.primary }]}
-              >
-                Personal Details
-              </ThemaText>
+            <ThemaText style={styles.fieldLabel}>
+              Confirm Password
+            </ThemaText>
+            <ThemedInput
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-              <ThemedInput
-                label="Age"
-                placeholder="Enter your age"
-                keyboardType="number-pad"
-              />
+            <ThemaText style={styles.sectionTitle}>
+              Contact Information
+            </ThemaText>
 
-              <ThemedInput
-                label="Province"
-                placeholder="Enter your province"
-                autoCapitalize="words"
-              />
+            <ThemaText style={styles.fieldLabel}>
+              WhatsApp Number
+            </ThemaText>
+            <ThemedInput
+              placeholder="e.g. 0771234567"
+              value={whatsappNumber}
+              onChangeText={setWhatsappNumber}
+              keyboardType="phone-pad"
+            />
 
-              <ThemedInput
-                label="WhatsApp Number"
-                placeholder="Enter your WhatsApp number"
-                keyboardType="phone-pad"
-              />
+            <ThemaText style={styles.fieldLabel}>
+              Confirm WhatsApp Number
+            </ThemaText>
+            <ThemedInput
+              placeholder="Re-enter your WhatsApp number"
+              value={confirmWhatsappNumber}
+              onChangeText={setConfirmWhatsappNumber}
+              keyboardType="phone-pad"
+            />
 
-              <ThemedInput
-                label="Confirm WhatsApp Number"
-                placeholder="Re-enter your WhatsApp number"
-                keyboardType="phone-pad"
-              />
-            </View>
+            {!!errorMessage && (
+              <View style={styles.messageBox}>
+                <ThemaText style={styles.errorText}>
+                  {errorMessage}
+                </ThemaText>
+              </View>
+            )}
 
-            {/* Register button */}
+            {!!successMessage && (
+              <View style={styles.messageBox}>
+                <ThemaText style={styles.successText}>
+                  {successMessage}
+                </ThemaText>
+              </View>
+            )}
+
             <View style={styles.buttonContainer}>
-              <TheamedButton label="Create Account" />
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator
+                    size="small"
+                    color={PRIMARY}
+                  />
+                  <ThemaText style={styles.loadingText}>
+                    Creating your account...
+                  </ThemaText>
+                </View>
+              ) : (
+                <TheamedButton
+                  label="Create Account"
+                  onPress={handleRegister}
+                />
+              )}
             </View>
 
             <View style={styles.footer}>
               <ThemaText style={styles.footerText}>
-                Fresh produce, smarter distribution.
+                Already have an account?{' '}
               </ThemaText>
+
+              <Link href="/(auth)/login" asChild>
+                <ThemaText style={styles.loginLink}>
+                  Log in
+                </ThemaText>
+              </Link>
             </View>
           </View>
-
-          <ThemaText style={styles.bottomText}>
-            Growing a greener future together.
-          </ThemaText>
-        </View>
-      </TheamView>
-    </ScrollView>
+        </TheamView>
+      </ScrollView>
     </TouchableWithoutFeedback>
   );
-};
-
-export default Register;
+}
 
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-
   scrollContent: {
     flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 35,
   },
-
   container: {
     flex: 1,
-    alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: 24,
+    paddingTop: 35,
+    paddingBottom: 30,
   },
-
-  content: {
-    width: '100%',
-    maxWidth: 430,
-  },
-
   header: {
     alignItems: 'center',
-    marginBottom: 27,
+    marginBottom: 28,
   },
-
-  logoContainer: {
-    width: 92,
-    height: 92,
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: '#21834A',
-    overflow: 'hidden',
-  },
-
   logo: {
-    width: '88%',
-    height: '88%',
+    width: 95,
+    height: 95,
+    resizeMode: 'contain',
+    marginBottom: 12,
   },
-
-  appName: {
+  title: {
     fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 5,
   },
-
   subtitle: {
-    fontSize: 13,
-    marginTop: 7,
-    opacity: 0.75,
+    fontSize: 19,
+    fontWeight: '600',
+    color: PRIMARY,
     textAlign: 'center',
   },
-
+  description: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    opacity: 0.75,
+  },
   form: {
     width: '100%',
-    paddingHorizontal: 20,
-    paddingTop: 26,
-    paddingBottom: 22,
-    borderRadius: 24,
-    borderWidth: 1,
-    elevation: 4,
-    shadowColor: '#183D27',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    maxWidth: 480,
+    alignSelf: 'center',
   },
-
-  formHeading: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-
-  description: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginTop: 9,
-    opacity: 0.7,
-  },
-
-  section: {
-    marginTop: 20,
-  },
-
   sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 5,
+  },
+  messageBox: {
+    marginTop: 14,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#F4F4F4',
+  },
+  errorText: {
+    color: '#C62828',
+    fontSize: 14,
+  },
+  successText: {
+    color: '#21834A',
+    fontSize: 14,
+  },
+  buttonContainer: {
+    marginTop: 22,
+  },
+  loadingContainer: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: PRIMARY,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 22,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+  loginLink: {
+    color: PRIMARY,
     fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 5,
-  },
-
-  buttonContainer: {
-    marginTop: 25,
-  },
-
-  footer: {
-    marginTop: 23,
-    paddingTop: 17,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#D6E3D7',
-    alignItems: 'center',
-  },
-
-  footerText: {
-    fontSize: 12,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-
-  bottomText: {
-    fontSize: 12,
-    opacity: 0.65,
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 5,
   },
 });

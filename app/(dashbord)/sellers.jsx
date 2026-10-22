@@ -1,21 +1,30 @@
 
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import TheamView from '../../components/TheamView';
 import ThemaText from '../../components/ThemaText';
 import ThemedInput from '../../components/ThemedInput';
 import TheamedButton from '../../components/TheamedButton';
 import { color } from '../../styles/colors';
+import { getToken } from '../../services/tokenStorage';
+import Section from '../../components/Section';
+import Dropdown from '../../components/Dropdown';
+import YesNo from '../../components/YesNo';
+import { useProducts } from '../../context/ProductContext';
+import { useRouter } from 'expo-router';
 
 const CATEGORIES = ['Fruit', 'Vegetable'];
 const UNITS = ['kg', 'g', 'piece', 'dozen', 'crate', 'box', 'bag'];
@@ -48,204 +57,14 @@ const FRESHNESS_OPTIONS = [
 ];
 const URGENCY_OPTIONS = ['Normal', 'Urgent', 'Critical'];
 
-function Section({ title, subtitle, icon, theme, children }) {
-  return (
-    <View
-      style={[
-        styles.section,
-        {
-          backgroundColor: theme.card,
-          borderColor: theme.border,
-        },
-      ]}
-    >
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.sectionIcon,
-            { backgroundColor: theme.uiBackground },
-          ]}
-        >
-          <Ionicons name={icon} size={21} color={theme.primary} />
-        </View>
 
-        <View style={styles.sectionHeading}>
-          <ThemaText
-            style={[styles.sectionTitle, { color: theme.title }]}
-          >
-            {title}
-          </ThemaText>
 
-          <ThemaText
-            style={[styles.sectionSubtitle, { color: theme.text }]}
-          >
-            {subtitle}
-          </ThemaText>
-        </View>
-      </View>
 
-      <View style={styles.sectionContent}>{children}</View>
-    </View>
-  );
-}
 
-function Dropdown({
-  label,
-  value,
-  options,
-  onSelect,
-  open,
-  onToggle,
-  theme,
-}) {
-  return (
-    <View style={styles.field}>
-      <ThemaText style={[styles.label, { color: theme.title }]}>
-        {label}
-      </ThemaText>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value}. Tap to change`}
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        style={({ pressed }) => [
-          styles.dropdownButton,
-          {
-            backgroundColor: theme.background,
-            borderColor: open ? theme.primary : theme.border,
-            opacity: pressed ? 0.85 : 1,
-          },
-        ]}
-      >
-        <ThemaText
-          style={[styles.dropdownValue, { color: theme.inputText }]}
-          numberOfLines={1}
-        >
-          {value || `Select ${label.toLowerCase()}`}
-        </ThemaText>
 
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={18}
-          color={theme.primary}
-        />
-      </Pressable>
 
-      {open && (
-        <View
-          style={[
-            styles.dropdownList,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          {options.map((option) => {
-            const selected = value === option;
 
-            return (
-              <Pressable
-                key={option}
-                onPress={() => {
-                  onSelect(option);
-                  Keyboard.dismiss();
-                }}
-                style={({ pressed }) => [
-                  styles.dropdownOption,
-                  {
-                    backgroundColor: selected
-                      ? theme.uiBackground
-                      : pressed
-                        ? theme.background
-                        : 'transparent',
-                  },
-                ]}
-              >
-                <ThemaText
-                  style={[
-                    styles.optionText,
-                    {
-                      color: selected ? theme.primary : theme.text,
-                      fontWeight: selected ? '700' : '400',
-                    },
-                  ]}
-                >
-                  {option}
-                </ThemaText>
-
-                {selected && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={19}
-                    color={theme.primary}
-                  />
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function YesNo({ label, value, onChange, theme }) {
-  return (
-    <View style={styles.field}>
-      <ThemaText style={[styles.label, { color: theme.title }]}>
-        {label}
-      </ThemaText>
-
-      <View style={styles.choiceRow}>
-        {[
-          { label: 'Yes', value: true, icon: 'checkmark-circle-outline' },
-          { label: 'No', value: false, icon: 'close-circle-outline' },
-        ].map((option) => {
-          const selected = value === option.value;
-
-          return (
-            <Pressable
-              key={option.label}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              onPress={() => onChange(option.value)}
-              style={[
-                styles.choiceButton,
-                {
-                  backgroundColor: selected
-                    ? theme.uiBackground
-                    : theme.background,
-                  borderColor: selected
-                    ? theme.primary
-                    : theme.border,
-                },
-              ]}
-            >
-              <Ionicons
-                name={option.icon}
-                size={18}
-                color={selected ? theme.primary : theme.iconColor}
-              />
-
-              <ThemaText
-                style={[
-                  styles.choiceText,
-                  {
-                    color: selected ? theme.primary : theme.text,
-                  },
-                ]}
-              >
-                {option.label}
-              </ThemaText>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
 
 export default function Sellers() {
   const scheme = useColorScheme() ?? 'light';
@@ -265,6 +84,7 @@ export default function Sellers() {
   const [availableTime, setAvailableTime] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
+  const [datePickerTarget, setDatePickerTarget] = useState(null);
   const [freshness, setFreshness] = useState('2 days');
   const [storage, setStorage] = useState('Shaded area');
 
@@ -273,9 +93,43 @@ export default function Sellers() {
   const [priceNegotiable, setPriceNegotiable] = useState(true);
   const [description, setDescription] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {addProduct}  = useProducts();
+  const router = useRouter();
+
+
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDate = (value) => {
+    if (!value) return new Date();
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS !== 'ios') setDatePickerTarget(null);
+    if (event?.type === 'dismissed' || !selectedDate) return;
+
+    const formattedDate = formatDate(selectedDate);
+    if (datePickerTarget === 'availableDate') {
+      setAvailableDate(formattedDate);
+    } else if (datePickerTarget === 'deadlineDate') {
+      setDeadlineDate(formattedDate);
+    }
+
+    if (Platform.OS === 'ios') setDatePickerTarget(null);
+  };
 
   const quantityNumber = Number(quantity);
   const priceNumber = Number(price);
+
+
+
 
   const totalPrice =
     quantity.trim() !== '' &&
@@ -306,7 +160,11 @@ export default function Sellers() {
     setOpenDropdown(null);
   };
 
-  const handlePublish = () => {
+
+  // Submit directly to the product API with the saved JWT.
+  const handlePublish = async () => {
+    if (isSubmitting) return;
+
     Keyboard.dismiss();
     setOpenDropdown(null);
 
@@ -315,23 +173,12 @@ export default function Sellers() {
       return;
     }
 
-    if (
-      quantity.trim() === '' ||
-      !Number.isFinite(quantityNumber) ||
-      quantityNumber <= 0
-    ) {
-      Alert.alert(
-        'Invalid quantity',
-        'Enter a quantity greater than zero.'
-      );
+    if (!quantity.trim() || !Number.isFinite(quantityNumber) || quantityNumber <= 0) {
+      Alert.alert('Invalid quantity', 'Enter a quantity greater than zero.');
       return;
     }
 
-    if (
-      price.trim() === '' ||
-      !Number.isFinite(priceNumber) ||
-      priceNumber <= 0
-    ) {
+    if (!price.trim() || !Number.isFinite(priceNumber) || priceNumber <= 0) {
       Alert.alert('Invalid price', 'Enter a price greater than zero.');
       return;
     }
@@ -341,97 +188,61 @@ export default function Sellers() {
       return;
     }
 
-    if (
-      minimumQuantity.trim() === '' ||
-      !Number.isFinite(Number(minimumQuantity)) ||
-      Number(minimumQuantity) <= 0
-    ) {
-      Alert.alert(
-        'Invalid minimum quantity',
-        'Enter a minimum purchase quantity greater than zero.'
-      );
+    const minimumQuantityNumber = Number(minimumQuantity);
+    if (!minimumQuantity.trim() || !Number.isFinite(minimumQuantityNumber) || minimumQuantityNumber <= 0) {
+      Alert.alert('Invalid minimum quantity', 'Enter a minimum purchase quantity greater than zero.');
+      return;
+    }
+
+    if (minimumQuantityNumber > quantityNumber) {
+      Alert.alert('Invalid minimum quantity', 'Minimum quantity cannot exceed the available quantity.');
       return;
     }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-    if (
-      availableDate.trim() &&
-      !datePattern.test(availableDate.trim())
-    ) {
+    if (availableDate.trim() && !datePattern.test(availableDate.trim())) {
       Alert.alert('Invalid date', 'Use YYYY-MM-DD for the available date.');
       return;
     }
-
-    if (
-      deadlineDate.trim() &&
-      !datePattern.test(deadlineDate.trim())
-    ) {
-      Alert.alert(
-        'Invalid date',
-        'Use YYYY-MM-DD for the collection deadline.'
-      );
+    if (deadlineDate.trim() && !datePattern.test(deadlineDate.trim())) {
+      Alert.alert('Invalid date', 'Use YYYY-MM-DD for the collection deadline.');
       return;
     }
-
-    if (
-      availableTime.trim() &&
-      !timePattern.test(availableTime.trim())
-    ) {
+    if (availableTime.trim() && !timePattern.test(availableTime.trim())) {
       Alert.alert('Invalid time', 'Use HH:MM in 24-hour format.');
       return;
     }
-
-    if (
-      deadlineTime.trim() &&
-      !timePattern.test(deadlineTime.trim())
-    ) {
+    if (deadlineTime.trim() && !timePattern.test(deadlineTime.trim())) {
       Alert.alert('Invalid time', 'Use HH:MM in 24-hour format.');
       return;
     }
-
-    if (
-      availableDate &&
-      deadlineDate &&
-      deadlineDate < availableDate
-    ) {
-      Alert.alert(
-        'Invalid dates',
-        'The collection deadline cannot be before the available date.'
-      );
+    if (availableDate && deadlineDate && deadlineDate < availableDate) {
+      Alert.alert('Invalid dates', 'The collection deadline cannot be before the available date.');
+      return;
+    }
+    if (availableDate && deadlineDate === availableDate && availableTime && deadlineTime && deadlineTime < availableTime) {
+      Alert.alert('Invalid time', 'The collection deadline cannot be before the available time.');
       return;
     }
 
-    if (
-      availableDate &&
-      deadlineDate === availableDate &&
-      availableTime &&
-      deadlineTime &&
-      deadlineTime < availableTime
-    ) {
-      Alert.alert(
-        'Invalid time',
-        'The collection deadline cannot be before the available time.'
-      );
-      return;
-    }
-
-    const listing = {
+    // Keep field names aligned with your Spring Boot request DTO.
+    const productData = {
       category,
       productName: productName.trim(),
       quantity: quantityNumber,
       unit,
-      pricePerUnit: priceNumber,
-      totalPrice,
+      // Spring Boot ProductRequestDTO expects the JSON property "price".
+      price: priceNumber,
       condition,
       packaging,
-      minimumQuantity: Number(minimumQuantity),
+      minimumQuantity: minimumQuantityNumber,
       location: location.trim(),
-      availableDate,
-      availableTime,
-      deadlineDate,
-      deadlineTime,
+      availableDate: availableDate.trim() || null,
+      availableTime: availableTime.trim() || null,
+      deadlineDate: deadlineDate.trim() || null,
+      deadlineTime: deadlineTime.trim() || null,
       freshness,
       storage,
       urgency,
@@ -440,17 +251,73 @@ export default function Sellers() {
       description: description.trim(),
     };
 
-    Alert.alert(
-      'Listing preview',
-      `${listing.productName}\n` +
-        `Category: ${listing.category}\n` +
-        `Quantity: ${listing.quantity} ${listing.unit}\n` +
-        `Price: Rs. ${listing.pricePerUnit.toFixed(2)} per ${listing.unit}\n` +
-        `Total asking value: ${formattedTotal}\n` +
-        `Minimum purchase: ${listing.minimumQuantity} ${listing.unit}\n` +
-        `Location: ${listing.location}\n\n` +
-        'This is a preview only. No listing has been saved to a server.'
-    );
+    try {
+      setIsSubmitting(true);
+      console.log('[Seller] POST product payload:', JSON.stringify(productData, null, 2));
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No saved access token was found. Please log in again.');
+      }
+
+
+      const response  = await addProduct(productData);
+
+      if(response!= null){
+          router.replace('/shop');
+      }
+
+      // const response = await apiClientProduct.post(
+      //   '/product/create',
+      //   productData,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //       'Content-Type': 'application/json',
+      //     },
+      //   }
+      // );
+
+
+
+      // const result = response.data;
+      // console.log('[Seller] HTTP status:', response.status);
+      // console.log('[Seller] POST product response:', result);
+
+      // Alert.alert('Success', 'Product listing created successfully.', [
+      //   { text: 'OK', onPress: handleReset },
+      // ]);
+    } catch (error) {
+      const status = error?.response?.status;
+      const responseBody = error?.response?.data;
+      console.error('[Seller] Product creation failed:', {
+        status,
+        responseBody,
+        message: error?.message,
+      });
+
+      let message =
+        responseBody?.message ||
+        responseBody?.error ||
+        error?.message ||
+        'Unknown error';
+
+      if (status === 400) {
+        message = `Backend rejected the product data (400). Check DTO field names and types.\n${message}`;
+      } else if (status === 401) {
+        message = '401 Unauthorized: your token may be missing, invalid, or expired. Please log in again.';
+      } else if (status === 403) {
+        message = '403 Forbidden: your account may not have permission to create products.';
+      } else if (status === 404) {
+        message = '404 Not Found: check the product API URL and endpoint path.';
+      } else if (!error?.response) {
+        message = `No HTTP response. Check the phone/laptop network, backend URL, and firewall.\n${message}`;
+      }
+
+      Alert.alert('Could not publish listing', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -467,6 +334,7 @@ export default function Sellers() {
     setAvailableTime('');
     setDeadlineDate('');
     setDeadlineTime('');
+    setDatePickerTarget(null);
     setFreshness('2 days');
     setStorage('Shaded area');
     setUrgency('Normal');
@@ -532,12 +400,12 @@ export default function Sellers() {
               <ThemaText
                 style={[styles.noticeTitle, { color: theme.title }]}
               >
-                Listing preview mode
+                Ready to publish
               </ThemaText>
               <ThemaText
                 style={[styles.noticeDescription, { color: theme.text }]}
               >
-                Your details are not sent to a server yet.
+Your listing will be submitted to the product service.
               </ThemaText>
             </View>
           </View>
@@ -713,12 +581,41 @@ export default function Sellers() {
             </ThemaText>
           </View>
 
-          <ThemedInput
-            label="Available from — date"
-            placeholder="YYYY-MM-DD"
-            value={availableDate}
-            onChangeText={setAvailableDate}
-          />
+          <View style={styles.field}>
+            <ThemaText style={[styles.label, { color: theme.title }]}>
+              Available from — date
+            </ThemaText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Choose available date${availableDate ? `, ${availableDate}` : ''}`}
+              onPress={() => {
+                Keyboard.dismiss();
+                setDatePickerTarget('availableDate');
+              }}
+              style={({ pressed }) => [
+                styles.dateInput,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: datePickerTarget === 'availableDate' ? theme.primary : theme.border,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <ThemaText style={{ color: availableDate ? theme.inputText : theme.text }}>
+                {availableDate || 'Select available date'}
+              </ThemaText>
+              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            </Pressable>
+            {datePickerTarget === 'availableDate' && (
+              <DateTimePicker
+                value={parseDate(availableDate)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={handleDateChange}
+                minimumDate={new Date(2000, 0, 1)}
+              />
+            )}
+          </View>
 
           <ThemedInput
             label="Available from — time"
@@ -727,12 +624,41 @@ export default function Sellers() {
             onChangeText={setAvailableTime}
           />
 
-          <ThemedInput
-            label="Collection deadline — date"
-            placeholder="YYYY-MM-DD"
-            value={deadlineDate}
-            onChangeText={setDeadlineDate}
-          />
+          <View style={styles.field}>
+            <ThemaText style={[styles.label, { color: theme.title }]}>
+              Collection deadline — date
+            </ThemaText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Choose collection deadline${deadlineDate ? `, ${deadlineDate}` : ''}`}
+              onPress={() => {
+                Keyboard.dismiss();
+                setDatePickerTarget('deadlineDate');
+              }}
+              style={({ pressed }) => [
+                styles.dateInput,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: datePickerTarget === 'deadlineDate' ? theme.primary : theme.border,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <ThemaText style={{ color: deadlineDate ? theme.inputText : theme.text }}>
+                {deadlineDate || 'Select collection deadline'}
+              </ThemaText>
+              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            </Pressable>
+            {datePickerTarget === 'deadlineDate' && (
+              <DateTimePicker
+                value={parseDate(deadlineDate || availableDate)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={handleDateChange}
+                minimumDate={availableDate ? parseDate(availableDate) : new Date(2000, 0, 1)}
+              />
+            )}
+          </View>
 
           <ThemedInput
             label="Collection deadline — time"
@@ -813,9 +739,18 @@ export default function Sellers() {
 
         <View style={styles.actions}>
           <TheamedButton
-            label="Preview listing"
+            label={isSubmitting ? 'Publishing...' : 'Publish listing'}
             onPress={handlePublish}
+            disabled={isSubmitting}
           />
+
+          {isSubmitting && (
+            <ActivityIndicator
+              size="small"
+              color={theme.primary}
+              style={{ marginTop: 8 }}
+            />
+          )}
 
           <Pressable
             onPress={handleReset}
@@ -844,7 +779,7 @@ export default function Sellers() {
             style={[styles.footerNote, { color: theme.text }]}
           >
             Make sure your quantity, price, and collection details are
-            correct before previewing.
+            correct before publishing.
           </ThemaText>
         </View>
       </ScrollView>
@@ -922,50 +857,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  section: {
-    borderWidth: 1,
-    borderRadius: 21,
-    padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    marginBottom: 22,
-  },
-  sectionIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionHeading: {
-    flex: 1,
-    gap: 4,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  sectionSubtitle: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  sectionContent: {
-    gap: 4,
-  },
 
-  field: {
-    flex: 1,
-    marginBottom: 16,
-    gap: 8,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -976,39 +868,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 
-  dropdownButton: {
-    minHeight: 49,
-    borderWidth: 1,
-    borderRadius: 13,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-  },
-  dropdownValue: {
-    flex: 1,
-    fontSize: 13,
-  },
-  dropdownList: {
-    borderWidth: 1,
-    borderRadius: 13,
-    overflow: 'hidden',
-    marginTop: 5,
-  },
-  dropdownOption: {
-    minHeight: 46,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  optionText: {
-    fontSize: 13,
-  },
 
   totalCard: {
     borderRadius: 17,
@@ -1046,6 +905,26 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 
+  field: {
+    marginBottom: 15,
+    gap: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dateInput: {
+    minHeight: 49,
+    borderWidth: 1,
+    borderRadius: 13,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+
   helperCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1060,24 +939,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  choiceRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  choiceButton: {
-    flex: 1,
-    minHeight: 47,
-    borderWidth: 1,
-    borderRadius: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  choiceText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
 
   actions: {
     gap: 12,

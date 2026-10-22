@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme" :"my_app",
+    "scheme": "my_app",
     "experiments": {
       "typedRoutes": true
     },
@@ -26,7 +26,9 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ]
   }
 }
